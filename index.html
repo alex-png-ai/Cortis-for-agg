@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Your Daily CORTIS!</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --grey: #333333;
+            --mid-grey: #494848;
+            --light-grey: #f4f4f4;
+            --switch-bg: #f0f0f0;
+            --accent: #dcae96;
+            --gold: #FFD700;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+            background: var(--bg); color: var(--grey);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            position: fixed; 
+            touch-action: none;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .app { 
+            display: flex; flex-direction: column; width: 100%; max-width: 500px; 
+            height: 100dvh; margin: 0 auto;
+            padding: env(safe-area-inset-top) 15px env(safe-area-inset-bottom);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- Header --- */
+        header.header-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 5px 0px; flex-shrink: 0; height: 45px;
+        }
+
+        .header-side { flex: 1; display: flex; align-items: center; }
+        .header-side.right { justify-content: flex-end; gap: 10px; }
+
+        header h1 { 
+            flex: 2; margin: 0; font-size: clamp(1.1rem, 5vw, 1.4rem); 
+            font-weight: 900; text-align: center; color: var(--mid-grey);
+            white-space: nowrap; letter-spacing: -0.5px;
+        }
+
+        /* --- Language Switcher --- */
+        .lang-switch-pill {
+            position: relative;
+            width: 58px; 
+            height: 28px; 
+            background: var(--switch-bg);
+            border-radius: 14px; 
+            display: flex;
+            align-items: center; 
+            cursor: pointer; 
+            padding: 2px;
+            border: 1px solid #e5e5e5; 
+            user-select: none;
+        }
+
+        .lang-switch-pill span {
+            flex: 1; font-size: 0.65rem; font-weight: 800; z-index: 2;
+            color: #aaa; transition: color 0.3s; text-align: center;
+        }
+
+        .pill-thumb {
+            position: absolute; width: 24px; height: 22px;
+            background: #fff; border-radius: 12px; left: 2px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); z-index: 1;
+        }
+
+        .app.lang-zh .pill-thumb { transform: translateX(0px); }
+        .app.lang-zh #label-zh { color: var(--mid-grey); }
+        .app.lang-zh #label-en { color: #aaa; }
+        .app.lang-en .pill-thumb { transform: translateX(28px); }
+        .app.lang-en #label-en { color: var(--mid-grey); }
+        .app.lang-en #label-zh { color: #aaa; }
+
+        /* --- Gallery Button --- */
+        .gallery-btn {
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: var(--light-grey);
+            color: var(--mid-grey);
+            border: none; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .gallery-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .gallery-btn:active { background: #e0e0e0; }
+
+        /* --- Main Content --- */
+        #quote { 
+            font-size: 0.85rem; 
+            color: #747373; 
+            margin-top: 5px;
+            font-weight: 600; 
+            line-height: 1.4;
+            min-height: 3em;
+            display: block;
+            text-align: center;
+            padding: 0 20px; 
+            flex-shrink: 0;
+        }
+
+        main {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            position: relative; width: 100%; min-height: 0;
+        }
+
+        .window {
+            position: relative; height: 95%; max-height: 420px;
+            aspect-ratio: 2 / 3; background: #fff;
+            border-radius: 15px; border: 1px solid #eee;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden;
+        }
+
+        #photo { position: absolute; inset: 0; background-size: cover; background-position: center; z-index: 1; }
+        .success-zoom { transform: scale(1.1) !important; transition: transform 1s ease; }
+
+        #canvas { 
+            position: absolute; inset: 0; z-index: 50; 
+            cursor: crosshair; touch-action: none; 
+            opacity: 0; pointer-events: none;
+        }
+        #canvas.active { opacity: 1; pointer-events: auto; }
+
+        #overlay {
+            position: absolute; inset: 0; z-index: 100;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex; align-items: center; justify-content: center;
+            perspective: 1000px; transition: opacity 0.4s ease;
+        }
+
+        .card { width: 160px; height: 240px; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
+        .card.flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 12px; border: 1.5px solid var(--mid-grey); display: flex; align-items: center; justify-content: center; }
+        .card-back { background: var(--mid-grey); color: #fff; font-weight: bold; letter-spacing: 2px; font-size: 0.9rem; }
+        .card-front { background: #fff; color: var(--mid-grey); transform: rotateY(180deg); font-weight: 700; text-transform: uppercase; font-size: 0.9rem; }
+
+        .sparkle-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 10; overflow: hidden; }
+        .sparkle-overlay::after {
+            content: ""; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 70%);
+            transform: rotate(30deg); animation: shine-sweep 3s ease-in-out infinite;
+        }
+        @keyframes shine-sweep { 0% { transform: translate(-100%, -100%) rotate(30deg); } 100% { transform: translate(100%, 100%) rotate(30deg); } }
+
+        /* --- Footer --- */
+        footer { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; padding: 10px 0 15px; }
+        .btn-group { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 110px; }
+        .btn-base { width: 80%; max-width: 220px; height: 48px; border-radius: 50px; font-weight: 800; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; border: none; }
+        .btn-primary { background: var(--mid-grey); color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .btn-secondary { background: #fff; color: var(--mid-grey); border: 2px solid var(--mid-grey); }
+        .hidden-all { opacity: 0 !important; pointer-events: none !important; }
+        @keyframes breathing-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-5px); background-color: #555; } }
+        .btn-active-float { animation: breathing-float 2s ease-in-out infinite; }
+
+        .copyright { margin-top: 10px; font-size: 0.55rem; color: #bbb; text-align: center; line-height: 1.4; padding: 0 20px; }
+        .footer-link { color: #aaa; text-decoration: underline; }
+
+        @media (max-height: 600px) {
+            header.header-row { height: 40px; }
+            header h1 { font-size: 1rem; }
+            .window { max-height: 280px; }
+        }
+
+        /* --- Hint & Modals --- */
+        .scratch-hint {
+            position: absolute; top: 50%; left: 0; width: 100%; transform: translateY(-50%);
+            z-index: 60; pointer-events: none; display: none; opacity: 0; text-align: center; transition: opacity 0.5s;
+        }
+        .scratch-hint.active { display: block; animation: hint-pulse 2.5s infinite ease-in-out; }
+        @keyframes hint-pulse { 0%, 100% { opacity: 0.3; transform: translateY(-50%) scale(1); } 50% { opacity: 0.7; transform: translateY(-50%) scale(1.08); } }
+        #hint-text-content { color: var(--mid-grey); font-weight: 700; font-size: 0.6rem; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); white-space: nowrap; display: inline-block; }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95);
+            z-index: 3000; display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-overlay.show { opacity: 1; }
+        
+        .name-box { width: 85%; max-width: 340px; text-align: center; background: #fff; padding: 35px 25px; border-radius: 30px; box-shadow: 0 15px 50px rgba(0,0,0,0.12); }
+        .name-box h2 { margin: 0 0 10px; font-weight: 900; letter-spacing: 2px; color: var(--mid-grey); }
+        .modal-intro { font-size: 0.85rem; color: #888; line-height: 1.5; margin-bottom: 20px; font-weight: 500; }
+        .modal-prompt { font-size: 0.85rem; color: var(--mid-grey); margin-bottom: 20px; font-weight: 800; }
+        #user-name-input { background: #f9f9f9; border: 2px solid #eee; width: 100%; padding: 12px 20px; border-radius: 50px; font-size: 0.8rem; text-align: center; outline: none; margin-bottom: 20px; transition: border-color 0.3s; }
+        #user-name-input:focus { border-color: var(--mid-grey); }
+        #modal-btn { width: 100%; height: 50px; background: var(--mid-grey); color: #fff; border: none; border-radius: 50px; font-weight: 800; font-size: 0.85rem; cursor: pointer; }
+        .user-clickable { color: var(--mid-grey); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-weight: 900; transition: opacity 0.2s; display: inline; }
+        .user-clickable:hover { opacity: 0.6; }
+
+        /* --- GALLERY: NEW LAYOUT STYLES --- */
+        #gallery-view {
+            position: fixed; inset: 0; background: #fff; z-index: 2000;
+            display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #gallery-view.active { transform: translateY(0); }
+        
+        .gallery-header {
+            padding: 15px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: #fff;
+            border-bottom: 1px solid #f0f0f0;
+            flex-shrink: 0;
+            height: 60px;
+        }
+        
+        .gallery-title-group { display: flex; flex-direction: column; }
+        .g-title-main { font-weight: 900; font-size: 1.1rem; color: var(--mid-grey); line-height: 1; }
+        .g-title-sub { font-size: 0.7rem; color: #aaa; font-weight: 600; margin-top: 4px; }
+
+        .close-gallery-btn, .back-gallery-btn {
+            background: none; border: none; font-size: 1.5rem; color: var(--grey);
+            cursor: pointer; padding: 5px; display: flex; align-items: center;
+        }
+        
+        /* Views Container */
+        .gallery-container {
+            flex: 1; overflow: hidden; position: relative;
+        }
+        
+        .g-page {
+            position: absolute; inset: 0; overflow-y: auto;
+            padding: 20px;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            background: #fff;
+        }
+        
+        /* Landing Page (Member Selection) */
+        .member-list {
+            display: flex; flex-direction: column; gap: 15px; padding-bottom: 40px;
+        }
+        
+        .member-card {
+            background: #f8f8f8; border-radius: 16px; padding: 25px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .member-card:active { transform: scale(0.98); background: #f0f0f0; }
+        
+        .m-info { display: flex; flex-direction: column; gap: 4px; }
+        .m-name { font-weight: 900; font-size: 1.2rem; color: var(--mid-grey); letter-spacing: 1px; }
+        .m-stats { font-size: 0.8rem; color: #aaa; font-weight: 600; }
+        
+        .m-arrow { color: #ccc; }
+
+        /* Detail Page (Grid) */
+        #gallery-detail { transform: translateX(100%); pointer-events: none; opacity: 0; }
+        #gallery-detail.active { transform: translateX(0); pointer-events: auto; opacity: 1; }
+        
+        .g-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); /* Changed to 7 columns */
+            gap: 5px; align-content: start;
+            padding-bottom: 80px;
+        }
+
+        .g-item {
+            aspect-ratio: 2/3; position: relative; border-radius: 6px; overflow: hidden;
+            background: #f0f0f0; 
+            transition: transform 0.2s;
+            border: 1px solid #eee;
+        }
+        
+        /* Unlocked State: Glow */
+        .g-item.unlocked {
+            border: 1.5px solid var(--accent);
+            box-shadow: 0 2px 8px rgba(220, 174, 150, 0.4); /* Glow effect */
+        }
+        
+        .g-item:active { transform: scale(0.96); }
+
+        .g-img { width: 100%; height: 100%; object-fit: cover; transition: filter 0.3s; }
+        
+        /* Locked State: Blurred & Grayscale */
+        .g-item.locked .g-img {
+            filter: blur(4px) grayscale(100%);
+            opacity: 0.4;
+        }
+        
+        .g-lock-icon {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: #555; opacity: 0; pointer-events: none;
+        }
+        .g-item.locked .g-lock-icon { opacity: 0.8; }
+        .g-lock-icon svg { width: 16px; height: 16px; } /* Smaller icon for dense grid */
+        
+        .new-badge {
+            position: absolute; top: 2px; right: 2px;
+            background: #ff4757; 
+            width: 6px; height: 6px; border-radius: 50%; /* Simple dot for small items */
+            box-shadow: 0 0 0 1px #fff;
+            display: none;
+            padding: 0;
+            color: transparent; /* Hide text for small dot style */
+        }
+        .g-item.just-unlocked .new-badge { display: block; }
+
+        /* --- PREVIEW MODAL (LIGHTBOX) --- */
+        #image-preview-modal {
+            position: fixed; inset: 0; z-index: 4000;
+            background: rgba(0,0,0,0.9);
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        #image-preview-modal.active { display: flex; opacity: 1; }
+        
+        #preview-img {
+            max-width: 95vw; max-height: 90vh;
+            border-radius: 4px; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            object-fit: contain; /* Keeps original aspect ratio */
+            transform: scale(0.9); transition: transform 0.3s ease;
+        }
+        #image-preview-modal.active #preview-img { transform: scale(1); }
+
+        .preview-close-btn {
+            position: absolute; top: 20px; right: 20px;
+            width: 44px; height: 44px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; border: none;
+            color: #fff;
+            backdrop-filter: blur(5px);
+            z-index: 4001;
+        }
+        .preview-close-btn svg { width: 24px; height: 24px; fill: currentColor; }
+        
+        /* Toast Notification */
+        #toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(30, 30, 30, 0.9); color: white;
+            padding: 10px 20px; border-radius: 30px;
+            font-size: 0.8rem; font-weight: 600;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s;
+            z-index: 5000; text-align: center;
+            white-space: nowrap;
+        }
+        #toast.show { opacity: 1; }
+        
+    </style>
+</head>
+<body class="lang-zh">
+
+<!-- Name Entry Modal -->
+<div id="name-modal" class="modal-overlay">
+    <div class="name-box">
+        <p id="modal-intro" class="modal-intro"></p> 
+        <p id="modal-prompt" class="modal-prompt"></p>
+        <input type="text" id="user-name-input" placeholder="" maxlength="10">
+        <button onclick="saveName()" id="modal-btn"></button>
+    </div>
+</div>
+
+<!-- Image Preview Modal (Lightbox) -->
+<div id="image-preview-modal" onclick="closePreview()">
+    <button class="preview-close-btn">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <img id="preview-img" src="" alt="Preview" onclick="event.stopPropagation()">
+</div>
+
+<!-- Toast -->
+<div id="toast">尚未取得，抽到後即可查看</div>
+
+<!-- Gallery View Overlay -->
+<div id="gallery-view">
+    <header class="gallery-header">
+        <div class="gallery-title-group">
+            <div class="g-title-main" id="g-header-title">Gallery</div>
+            <div class="g-title-sub" id="g-header-sub">Collection</div>
+        </div>
+        
+        <!-- Controls: either Close or Back -->
+        <div id="g-ctrl-home">
+            <button class="close-gallery-btn" onclick="toggleGallery(false)">&times;</button>
+        </div>
+        <div id="g-ctrl-back" style="display: none;">
+            <button class="back-gallery-btn" onclick="backToGalleryHome()">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+        </div>
+    </header>
+    
+    <div class="gallery-container">
+        <!-- 1. Member Selection (Landing) -->
+        <div id="gallery-home" class="g-page">
+            <div class="member-list" id="member-list-container">
+                <!-- JS will pop this -->
+            </div>
+        </div>
+        
+        <!-- 2. Detail Grid -->
+        <div id="gallery-detail" class="g-page">
+            <div class="g-grid" id="gallery-grid">
+                <!-- JS will pop this -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app" id="app-container">
+    <header class="header-row">
+        <div class="header-side">
+            <!-- Gallery Trigger -->
+            <button class="gallery-btn" onclick="toggleGallery(true)" aria-label="Gallery">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/>
+                </svg>
+            </button>
+        </div>
+        <h1 id="title-main">Your Daily CORTIS!</h1>
+        <div class="header-side right">
+            <div class="lang-switch-pill" onclick="toggleLanguage()">
+                <span id="label-zh">中</span>
+                <span id="label-en">EN</span>
+                <div class="pill-thumb"></div>
+            </div>
+        </div>
+    </header>
+    
+    <div id="quote"></div>
+
+    <main>
+        <div class="window" id="card-window">
+            <div id="photo"></div>
+            <canvas id="canvas"></canvas>
+            <div id="scratch-hint" class="scratch-hint">
+                <span id="hint-text-content"></span>
+            </div>
+            <div id="overlay">
+                <div id="card-obj" class="card">
+                    <div class="card-face card-back">CORTIS</div>
+                    <div id="card-name" class="card-face card-front">?</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer id="ui-footer">
+        <div class="btn-group" id="btn-group">
+            <button id="main-btn" class="btn-base btn-primary" onclick="handleMain()">抽取小卡</button>
+            <button id="redraw-btn" class="btn-base btn-secondary" style="display: none;" onclick="handleRedraw()">重新抽取</button>
+        </div>
+        <div id="copy-text" class="copyright"></div>
+    </footer>
+</div>
+
+<script>
+    /* --- DATA --- */
+    const i18n = {
+        zh: {
+            title: "Your Daily CORTIS!",
+            pullBtn: "抽取小卡", breakBtn: "揭開真面目", redrawBtn: "不是本命？再抽一次",
+            pullAgain: "再抽一次", shuffling: "重新洗牌中...",
+            scratchHint: " (刮開看照片）",
+            nameIntro: "Hi, COER! <br>動動手指，來開一張今天的驚喜小卡吧！✨",
+            namePrompt: "在開始之前，該怎麼稱呼你呢？",
+            namePlaceholder: "輸入暱稱...",
+            nameBtn: "確定",
+            galleryTitle: "成員圖鑑",
+            gallerySub: "選擇一位成員查看",
+            galleryLocked: "尚未取得，抽到後即可查看",
+            galleryCollected: "已收集",
+            welcomeMsgs: [
+                "嗨 {user} ！今天想遇見哪位團員呢？✨",
+                "{user} ，今天的手氣如何？抽張小卡試試看吧！🔮",
+                "準備好接收今日份的 CORTIS 能量了嗎， {user}？💪",
+                "{user} ，來抽一張專屬於你今天的本命小卡吧！💖"
+            ],
+            pullMsgs: [
+                "OMG! 是 {name}！",
+                "準備好了嗎？{name} 正在等你。",
+                "今天的幸運星是 {name}！",
+                "{name} 已就緒，正等待與你相遇 ✨"
+            ],
+            successMsgs: [
+                "✨ {user}，捕捉到最閃耀的 {name} 了！",
+                "💖 {user}，這是屬於你的限定 {name}！",
+                "🌟 完美的瞬間！{user} 遇見了正在發光的 {name}",
+                "🎬 收藏成功！{user} 把 {name} 帶入庫了"
+            ],
+            copyright: "本網頁為 CORTIS 應援小作品，非官方發行。© 2026 Your Daily CORTIS! by <a href='https://www.threads.net/@leeami0720' target='_blank' class='footer-link'>@leeami0720</a>"  
+        },
+        en: {
+            title: "Your Daily CORTIS!",
+            pullBtn: "Pull Card", breakBtn: "Check the look!", redrawBtn: "Not your bias? Re-pull",
+            pullAgain: "Pull Again", shuffling: "Shuffling...",
+            scratchHint: "(Scratch To See)", 
+            nameIntro: "Hi, COER! <br>Ready for your daily surprise? Swipe to open your card! ✨",
+            namePrompt: "Before we start, what is your name?",
+            namePlaceholder: "Enter nickname...",
+            nameBtn: "Let's Go",
+            galleryTitle: "Gallery",
+            gallerySub: "Select a member",
+            galleryLocked: "Locked. Pull to unlock!",
+            galleryCollected: "Collected",
+            welcomeMsgs: [
+                "Hi {user}! Which member do you want to meet today? ✨",
+                "How's your luck today, {user}? Pull a card to find out! 🔮",
+                "Ready for your daily dose of CORTIS energy, {user}? 💪"
+            ],
+            pullMsgs: [
+                "OMG! It's {name}!",
+                "Ready? {name} is waiting for you.",
+                "{name} is your lucky star today!"
+            ],
+            successMsgs: [
+                "✨ {user}, you've caught the brightest {name}!",
+                "💖 {user}, this is your limited edition {name}!",
+                "🌟 A perfect moment! {user} just met the glowing {name}",
+                "🎬 Successfully collected! {user} has added {name} to the vault"
+            ],
+            copyright: "This is a non-official fan-made project. © 2026 Your Daily CORTIS! by <a href='https://www.threads.net/leeami0720' target='_blank' class='footer-link'>@leeami0720</a>"
+        }
+    };
+
+    const members = [
+        { 
+            name: 'MARTIN', 
+            imgs: [
+                'https://i.meee.com.tw/MOYXYYH.jpg', 'https://i.meee.com.tw/SEXIiU3.jpg', 'https://i.meee.com.tw/zFRjemR.jpg', 'https://i.meee.com.tw/nybbReK.jpg', 'https://i.meee.com.tw/BFcRZlJ.jpg', 'https://i.meee.com.tw/Pc2u4J8.jpg', 'https://i.meee.com.tw/RnUITpD.jpg', 'https://i.meee.com.tw/Zb8FRRs.jpg', 'https://i.meee.com.tw/ZgqWbdW.jpg', 'https://i.meee.com.tw/JPuCVMj.jpg', 'https://i.meee.com.tw/cGxbgRL.jpg', 'https://i.meee.com.tw/WZ9HKOt.jpg', 'https://i.meee.com.tw/EAhkLPa.jpg', 'https://i.meee.com.tw/CHRCiwv.jpg', 'https://i.meee.com.tw/K4acoX3.jpg', 'https://i.meee.com.tw/AgqCwUG.jpg', 'https://i.meee.com.tw/IBiP9Xm.jpg', 'https://i.meee.com.tw/0pdENOw.jpg', 'https://i.meee.com.tw/wu2sbnG.jpg', 'https://i.meee.com.tw/fPwFyVD.jpg', 'https://i.meee.com.tw/VcFbdLs.jpg', 'https://i.meee.com.tw/qCtj1y3.jpg', 'https://i.meee.com.tw/IP97a5i.jpg', 'https://i.meee.com.tw/0gKJbSE.jpg', 'https://i.meee.com.tw/LHFUSDc.jpg', 'https://i.meee.com.tw/9udlrZt.jpg', 'https://i.meee.com.tw/63a3eGG.jpg', 'https://i.meee.com.tw/QLI0KOO.jpg', 'https://i.meee.com.tw/FBfCScg.jpg', 'https://i.meee.com.tw/HKrjhy2.jpg', 'https://i.meee.com.tw/nBHIUqX.jpg', 'https://i.meee.com.tw/vGQkP0l.jpg', 'https://i.meee.com.tw/npm2G9Y.jpg', 'https://i.meee.com.tw/3pEHph6.jpg', 'https://i.meee.com.tw/wbFC98x.jpg', 'https://i.meee.com.tw/s7uRU3X.jpg', 'https://i.meee.com.tw/GpmAtDL.jpg', 'https://i.meee.com.tw/lb7RCBk.jpg', 'https://i.meee.com.tw/BqGhZtG.jpg', 'https://i.meee.com.tw/OiaypWz.jpg', 'https://i.meee.com.tw/IBE84U7.jpg'
+            ] 
+        },
+        { 
+            name: 'JAMES', 
+            imgs: [
+                'https://i.meee.com.tw/CVBsBfd.jpg', 'https://i.meee.com.tw/xtAhmPX.jpg', 'https://i.meee.com.tw/3G5NxcV.jpg', 'https://i.meee.com.tw/kA8DG3b.jpg', 'https://i.meee.com.tw/VMDbJX7.jpg', 'https://i.meee.com.tw/agwNTow.jpg', 'https://i.meee.com.tw/Ipfv0L5.jpg', 'https://i.meee.com.tw/08xbMYK.jpg', 'https://i.meee.com.tw/BMFBEF9.jpg', 'https://i.meee.com.tw/443BjvM.jpg', 'https://i.meee.com.tw/NyCrZFY.jpg', 'https://i.meee.com.tw/nqHzylv.jpg', 'https://i.meee.com.tw/HdAbga0.jpg', 'https://i.meee.com.tw/tQ3LFv8.jpg', 'https://i.meee.com.tw/Pgf02by.jpg', 'https://i.meee.com.tw/tUHP9eq.jpg', 'https://i.meee.com.tw/cFAFXHL.jpg', 'https://i.meee.com.tw/iw81cbd.jpg', 'https://i.meee.com.tw/ovceTuk.jpg', 'https://i.meee.com.tw/7wCu2Ne.jpg', 'https://i.meee.com.tw/b9zN4u7.jpg', 'https://i.meee.com.tw/GatiyNi.jpg', 'https://i.meee.com.tw/09mgKIc.jpg', 'https://i.meee.com.tw/OhvD8d6.jpg', 'https://i.meee.com.tw/xmxsUOU.jpg', 'https://i.meee.com.tw/I9kGYfx.jpg', 'https://i.meee.com.tw/qOU6Jq5.jpg', 'https://i.meee.com.tw/WA6Owsw.jpg', 'https://i.meee.com.tw/i9oRArI.jpg', 'https://i.meee.com.tw/jPwvfEK.jpg', 'https://i.meee.com.tw/uWJs9sT.jpg', 'https://i.meee.com.tw/N3DAwqP.jpg', 'https://i.meee.com.tw/Ak8oEDk.jpg', 'https://i.meee.com.tw/N3J3tmF.jpg', 'https://i.meee.com.tw/Zni4ahH.jpg', 'https://i.meee.com.tw/OzvQZvK.jpg', 'https://i.meee.com.tw/oAhHC9H.jpg', 'https://i.meee.com.tw/YPibdR6.jpg', 'https://i.meee.com.tw/GGAf8Wh.jpg', 'https://i.meee.com.tw/AaNm91y.jpg', 'https://i.meee.com.tw/vnOtoNj.jpg'
+            ] 
+        },
+        { 
+            name: 'JUHOON', 
+            imgs: [
+                'https://i.meee.com.tw/NcdYMX7.jpg', 'https://i.meee.com.tw/J9lZu2w.jpg', 'https://i.meee.com.tw/2urGipe.jpg', 'https://i.meee.com.tw/Etfw5vh.jpg', 'https://i.meee.com.tw/XPZy2Ax.jpg', 'https://i.meee.com.tw/idAqO9Z.jpg', 'https://i.meee.com.tw/jG1kN6o.jpg', 'https://i.meee.com.tw/6k15xnq.jpg', 'https://i.meee.com.tw/ZuWz8u9.jpg', 'https://i.meee.com.tw/NiWzAif.jpg', 'https://i.meee.com.tw/XfHBS3X.jpg', 'https://i.meee.com.tw/QLDYDN5.jpg', 'https://i.meee.com.tw/RdO84FD.jpg', 'https://i.meee.com.tw/iYWyYIV.jpg', 'https://i.meee.com.tw/LyHeJwT.jpg', 'https://i.meee.com.tw/6Iu0lc0.jpg', 'https://i.meee.com.tw/cOiAmF3.jpg', 'https://i.meee.com.tw/CPNWL6a.jpg', 'https://i.meee.com.tw/F8KcTfr.jpg', 'https://i.meee.com.tw/thhW0yr.jpg', 'https://i.meee.com.tw/V7Fw2Fx.jpg', 'https://i.meee.com.tw/2RUrC2b.jpg', 'https://i.meee.com.tw/RtZyWdr.jpg', 'https://i.meee.com.tw/FpqvDsF.jpg', 'https://i.meee.com.tw/rcvG6eh.jpg', 'https://i.meee.com.tw/VkCgEja.jpg', 'https://i.meee.com.tw/7xURHqc.jpg', 'https://i.meee.com.tw/lGZ6xBQ.jpg', 'https://i.meee.com.tw/kqPD6I4.jpg', 'https://i.meee.com.tw/26CRqzz.jpg', 'https://i.meee.com.tw/hrxaA4d.jpg', 'https://i.meee.com.tw/GJcXP2N.jpg', 'https://i.meee.com.tw/ZbPgm5R.jpg', 'https://i.meee.com.tw/62oX3v0.jpg', 'https://i.meee.com.tw/Mqfwqov.jpg', 'https://i.meee.com.tw/T9M6c8T.jpg', 'https://i.meee.com.tw/QTcLlEG.jpg', 'https://i.meee.com.tw/L0hUH8u.jpg', 'https://i.meee.com.tw/9qdsKFy.jpg', 'https://i.meee.com.tw/1Dn8QUo.jpg', 'https://i.meee.com.tw/PYgaVcq.jpg'
+            ] 
+        },
+        { 
+            name: 'SEONGHYEON', 
+            imgs: [
+                'https://i.meee.com.tw/BIumaWw.jpg', 'https://i.meee.com.tw/1EVXMKA.jpg', 'https://i.meee.com.tw/ovZEBqB.jpg', 'https://i.meee.com.tw/stTT15O.jpg', 'https://i.meee.com.tw/4BkHrGv.jpg', 'https://i.meee.com.tw/IttS1Qk.jpg', 'https://i.meee.com.tw/zEEp4hj.jpg', 'https://i.meee.com.tw/Wmvt06M.jpg', 'https://i.meee.com.tw/HC1zIaI.jpg', 'https://i.meee.com.tw/48UcC4j.jpg', 'https://i.meee.com.tw/7bjuACv.jpg', 'https://i.meee.com.tw/4SA8Zfn.jpg', 'https://i.meee.com.tw/50ugDvH.jpg', 'https://i.meee.com.tw/R3gWDCJ.jpg', 'https://i.meee.com.tw/OxAENiY.jpg', 'https://i.meee.com.tw/PncXEQb.jpg', 'https://i.meee.com.tw/dFGOhkJ.jpg', 'https://i.meee.com.tw/wJ0yrIp.jpg', 'https://i.meee.com.tw/pvDLmWS.jpg', 'https://i.meee.com.tw/cBpEnL7.jpg', 'https://i.meee.com.tw/iGx6FU4.jpg', 'https://i.meee.com.tw/uVaK1ZC.jpg', 'https://i.meee.com.tw/Coe2Xji.jpg', 'https://i.meee.com.tw/rmLojta.jpg', 'https://i.meee.com.tw/fUyJ5uZ.jpg', 'https://i.meee.com.tw/pTTflJj.jpg', 'https://i.meee.com.tw/G9VS9NE.jpg', 'https://i.meee.com.tw/7RTGCmf.jpg', 'https://i.meee.com.tw/EgTENpf.jpg', 'https://i.meee.com.tw/ocU7do0.jpg', 'https://i.meee.com.tw/XdMepIA.jpg', 'https://i.meee.com.tw/MMlSVTC.jpg', 'https://i.meee.com.tw/4diqcVU.jpg', 'https://i.meee.com.tw/LobjZF4.jpg', 'https://i.meee.com.tw/E7m4FCB.jpg', 'https://i.meee.com.tw/l9T7qtd.jpg', 'https://i.meee.com.tw/DMGbGxW.jpg', 'https://i.meee.com.tw/zzR5FSh.jpg', 'https://i.meee.com.tw/bPUxjlO.jpg', 'https://i.meee.com.tw/DDetHVG.jpg', 'https://i.meee.com.tw/Lqddbrl.jpg'
+            ] 
+        },
+        { 
+            name: 'KEONHO', 
+            imgs: [
+                'https://i.meee.com.tw/RifsdWi.jpg', 'https://i.meee.com.tw/h6sBuPV.jpg', 'https://i.meee.com.tw/orrhHJ9.jpg', 'https://i.meee.com.tw/ulzgelY.jpg', 'https://i.meee.com.tw/hrasay4.jpg', 'https://i.meee.com.tw/KdBrKDx.jpg', 'https://i.meee.com.tw/us2KGpy.jpg', 'https://i.meee.com.tw/UwUBIUD.jpg', 'https://i.meee.com.tw/gF9niFB.jpg', 'https://i.meee.com.tw/CRHCpB1.jpg', 'https://i.meee.com.tw/BdkFp7E.jpg', 'https://i.meee.com.tw/EpSMghF.jpg', 'https://i.meee.com.tw/IiOHTxO.jpg', 'https://i.meee.com.tw/FKtO9gB.jpg', 'https://i.meee.com.tw/uvavWIW.jpg', 'https://i.meee.com.tw/ey4XbGj.jpg', 'https://i.meee.com.tw/yFoEH6Y.jpg', 'https://i.meee.com.tw/cyAyduB.jpg', 'https://i.meee.com.tw/pzm48tI.jpg', 'https://i.meee.com.tw/qGoDBGL.jpg', 'https://i.meee.com.tw/OvezIXK.jpg', 'https://i.meee.com.tw/lc2cvnR.jpg', 'https://i.meee.com.tw/6EIUcNn.jpg', 'https://i.meee.com.tw/EM9l1yO.jpg', 'https://i.meee.com.tw/7cDaWyU.jpg', 'https://i.meee.com.tw/VBOiyxl.jpg', 'https://i.meee.com.tw/7RhEFsO.jpg', 'https://i.meee.com.tw/gWFHTfh.jpg', 'https://i.meee.com.tw/PMSu76m.jpg', 'https://i.meee.com.tw/2TjeXdU.jpg', 'https://i.meee.com.tw/edDiacb.jpg', 'https://i.meee.com.tw/9Ss2EVA.jpg', 'https://i.meee.com.tw/leGjRQu.jpg', 'https://i.meee.com.tw/iRghcBx.jpg', 'https://i.meee.com.tw/sIHEA1v.jpg', 'https://i.meee.com.tw/Bo8qOPs.jpg', 'https://i.meee.com.tw/f9DcHTT.jpg', 'https://i.meee.com.tw/JIfMKy7.jpg', 'https://i.meee.com.tw/i95UGif.jpg', 'https://i.meee.com.tw/xkbTgyT.jpg', 'https://i.meee.com.tw/24EydLu.jpg'
+            ] 
+        }
+    ];
+
+    /* --- GLOBAL STATE --- */
+    let currentLang = localStorage.getItem('cortis_lang') || 'zh';
+    let userName = localStorage.getItem('cortis_user_name') || "";
+    // Collection: Array of Unlocked Image URLs
+    let collection = JSON.parse(localStorage.getItem('cortis_collection') || '[]');
+
+    let state = 'IDLE'; // IDLE, DRAWN, PLAYING, END
+    let selectedMember = null;
+    let selectedImg = null;
+    let progressTimer = null;
+    let currentPullMsgIdx = 0;
+    let currentSuccessMsgIdx = 0;
+    let welcomeIdx = Math.floor(Math.random() * 3); 
+    
+    // Gallery State
+    let activeGalleryTab = 0; 
+
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const photo = document.getElementById('photo'), overlay = document.getElementById('overlay');
+    const mainBtn = document.getElementById('main-btn'), redrawBtn = document.getElementById('redraw-btn');
+    const quoteBox = document.getElementById('quote'), appCont = document.getElementById('app-container');
+
+    /* --- UI FUNCTIONS --- */
+    function updateUI() {
+        const lang = i18n[currentLang];
+
+        // Modals
+        document.getElementById('modal-intro').innerHTML = lang.nameIntro;
+        document.getElementById('modal-prompt').innerText = lang.namePrompt;
+        document.getElementById('modal-btn').innerText = lang.nameBtn;
+        document.getElementById('user-name-input').placeholder = lang.namePlaceholder;
+        
+        // Gallery
+        document.getElementById('g-header-title').innerText = lang.galleryTitle;
+        // Subtitle logic will be handled by gallery navigation functions
+        document.getElementById('toast').innerText = lang.galleryLocked;
+
+        document.getElementById('title-main').innerText = lang.title;
+        document.getElementById('copy-text').innerHTML = lang.copyright;
+
+        const hintText = document.getElementById('hint-text-content');
+        if (hintText) hintText.innerText = lang.scratchHint;
+
+        // Language Classes
+        if (currentLang === 'zh') { appCont.classList.add('lang-zh'); appCont.classList.remove('lang-en'); } 
+        else { appCont.classList.add('lang-en'); appCont.classList.remove('lang-zh'); }
+
+        const displayUser = userName || (currentLang === 'zh' ? "朋友" : "Friend");
+        const userSpan = `&nbsp;<span class="user-clickable" onclick="resetUserName()">${displayUser}</span>&nbsp`;
+
+        // Main Button States
+        if (state === 'IDLE') {
+            mainBtn.innerText = lang.pullBtn;
+            mainBtn.classList.remove('btn-active-float');
+            redrawBtn.style.display = 'none';
+            // Safe welcome index
+            let wIdx = welcomeIdx % lang.welcomeMsgs.length;
+            let msg = lang.welcomeMsgs[wIdx];
+            quoteBox.innerHTML = msg.replace("{user}", userSpan);             
+            canvas.classList.remove('active');
+        } else if (state === 'DRAWN') {
+            mainBtn.innerText = lang.breakBtn;
+            mainBtn.classList.add('btn-active-float'); 
+            redrawBtn.innerText = lang.redrawBtn;
+            redrawBtn.style.display = 'flex';
+            let pIdx = currentPullMsgIdx % lang.pullMsgs.length;
+            const msg = lang.pullMsgs[pIdx]; 
+            quoteBox.innerText = msg.replace("{name}", selectedMember.name);
+        } else if (state === 'END') {
+            mainBtn.innerText = lang.pullAgain;
+            mainBtn.classList.remove('btn-active-float');
+            redrawBtn.style.display = 'none';
+            let sIdx = currentSuccessMsgIdx % lang.successMsgs.length;
+            let msg = lang.successMsgs[sIdx];
+            let formattedMsg = msg.replace("{user}", userSpan)
+                                .replace("{name}", selectedMember.name);
+            quoteBox.innerHTML = formattedMsg
+        }
+    }
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('cortis_lang', currentLang); 
+        updateUI();
+        
+        // Refresh Gallery UI text if open
+        if(document.getElementById('gallery-view').classList.contains('active')){
+            // If in detail view, refresh header stats
+            if(document.getElementById('gallery-detail').classList.contains('active')){
+                updateGalleryHeader(members[activeGalleryTab]);
+            } else {
+                initGalleryHome(); // Refresh home text
+            }
+        }
+    }
+
+    /* --- GAME FLOW --- */
+    function handleMain() {
+        if (state === 'IDLE') pull();
+        else if (state === 'DRAWN') startPlay();
+        else if (state === 'END') resetGame();
+    }
+
+    function pull() {
+        selectedMember = members[Math.floor(Math.random() * members.length)];
+        selectedImg = selectedMember.imgs[Math.floor(Math.random() * selectedMember.imgs.length)];
+
+        // Preload
+        const imgPreload = new Image();
+        imgPreload.src = selectedImg;
+
+        currentPullMsgIdx = Math.floor(Math.random() * i18n[currentLang].pullMsgs.length);
+
+        document.getElementById('card-name').innerText = selectedMember.name;
+        document.getElementById('card-obj').classList.add('flipped');
+        
+        initCanvas(); 
+        
+        state = 'DRAWN';
+        updateUI();
+    }
+
+    function handleRedraw() {
+        document.getElementById('card-obj').classList.remove('flipped');
+        state = 'IDLE'; updateUI(); 
+        quoteBox.innerText = i18n[currentLang].shuffling;
+        setTimeout(pull, 400);
+    }
+
+    function resetGame() {
+        state = 'IDLE';
+        document.getElementById('card-obj').classList.remove('flipped');
+        overlay.style.display = "flex"; 
+        overlay.style.opacity = "1";
+        photo.classList.remove('success-zoom');
+        const oldSparkle = document.querySelector('.sparkle-overlay');
+        if (oldSparkle) oldSparkle.remove();
+        
+        const hint = document.getElementById('scratch-hint');
+        if (hint) {
+            hint.classList.remove('active');
+            hint.style.display = "none";
+            hint.style.opacity = "0";
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        welcomeIdx = Math.floor(Math.random() * 10);
+        updateUI();
+    }
+
+    /* --- CANVAS & SCRATCH --- */
+    function initCanvas() {
+        const cardWin = document.getElementById('card-window');
+        if (!cardWin) return;
+        const rect = cardWin.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#eeeeee';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = 25;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+    }
+
+    function startPlay() {
+        state = 'PLAYING';
+        document.getElementById('btn-group').classList.add('hidden-all');
+        
+        photo.style.backgroundImage = `url('${selectedImg}')`;
+        canvas.classList.add('active');
+
+        const hint = document.getElementById('scratch-hint');
+        if (hint) {
+            hint.style.display = "block"; 
+            setTimeout(() => { hint.classList.add('active'); hint.style.opacity = "1"; }, 10);
+        }
+        
+        overlay.style.opacity = "0";
+        setTimeout(() => { overlay.style.display = "none"; }, 400);
+        
+        progressTimer = setInterval(calcProgress, 500);
+    }
+
+    let isDrawing = false, lastX = 0, lastY = 0;
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+        if (state !== 'PLAYING') return;
+        isDrawing = true;
+        const hint = document.getElementById('scratch-hint');
+        if (hint && hint.classList.contains('active')) {
+            hint.classList.remove('active');
+            hint.style.opacity = "0";
+            setTimeout(() => { if (state === 'PLAYING') hint.style.display = "none"; }, 500);        
+        }
+        const pos = getPos(e); lastX = pos.x; lastY = pos.y;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, ctx.lineWidth / 2, 0, Math.PI * 2); ctx.fill();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (!isDrawing || state !== 'PLAYING') return;
+        const pos = getPos(e);
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        lastX = pos.x; lastY = pos.y;
+    });
+    window.addEventListener('pointerup', () => isDrawing = false);
+
+    function calcProgress() {
+        if (state !== 'PLAYING') return;
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let clear = 0;
+        for (let i = 3; i < data.length; i += 120) { if (data[i] === 0) clear++; }
+        if ((clear / (data.length / 120)) * 100 >= 85) endPlay();
+    }
+
+    function endPlay() {
+        clearInterval(progressTimer);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.classList.remove('active');
+        photo.classList.add('success-zoom');
+        
+        const sparkle = document.createElement('div');
+        sparkle.className = 'sparkle-overlay';
+        document.getElementById('card-window').appendChild(sparkle);
+        
+        currentSuccessMsgIdx = Math.floor(Math.random() * i18n[currentLang].successMsgs.length);
+        
+        // UNLOCK LOGIC HERE
+        unlockImage(selectedImg);
+
+        state = 'END';
+        document.getElementById('btn-group').classList.remove('hidden-all');
+        updateUI();
+    }
+
+    /* --- GALLERY LOGIC --- */
+    function unlockImage(url) {
+        if (!collection.includes(url)) {
+            collection.push(url);
+            localStorage.setItem('cortis_collection', JSON.stringify(collection));
+        }
+    }
+
+    function toggleGallery(show) {
+        const view = document.getElementById('gallery-view');
+        if (show) {
+            view.classList.add('active');
+            backToGalleryHome(); // Always reset to home when opening
+        } else {
+            view.classList.remove('active');
+        }
+    }
+
+    function initGalleryHome() {
+        const container = document.getElementById('member-list-container');
+        container.innerHTML = '';
+        
+        document.getElementById('g-header-sub').innerText = i18n[currentLang].gallerySub;
+
+        members.forEach((member, index) => {
+            // Calculate stats
+            let collected = 0;
+            member.imgs.forEach(url => { if (collection.includes(url)) collected++; });
+            
+            const card = document.createElement('div');
+            card.className = 'member-card';
+            card.onclick = () => openMemberGallery(index);
+            
+            const labelCollected = i18n[currentLang].galleryCollected;
+            
+            card.innerHTML = `
+                <div class="m-info">
+                    <div class="m-name">${member.name}</div>
+                    <div class="m-stats">${labelCollected}: ${collected} / ${member.imgs.length}</div>
+                </div>
+                <div class="m-arrow">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+    
+    function openMemberGallery(index) {
+        activeGalleryTab = index;
+        const member = members[index];
+        
+        // Animations
+        document.getElementById('gallery-home').style.transform = 'translateX(-20%)';
+        document.getElementById('gallery-home').style.opacity = '0';
+        
+        const detail = document.getElementById('gallery-detail');
+        detail.classList.add('active');
+        
+        // Header updates
+        updateGalleryHeader(member);
+        
+        // Toggle controls
+        document.getElementById('g-ctrl-home').style.display = 'none';
+        document.getElementById('g-ctrl-back').style.display = 'block';
+        
+        renderGalleryGrid(member);
+    }
+    
+    function backToGalleryHome() {
+        // Reset animations
+        document.getElementById('gallery-home').style.transform = 'translateX(0)';
+        document.getElementById('gallery-home').style.opacity = '1';
+        
+        const detail = document.getElementById('gallery-detail');
+        detail.classList.remove('active');
+        
+        // Controls
+        document.getElementById('g-ctrl-home').style.display = 'block';
+        document.getElementById('g-ctrl-back').style.display = 'none';
+        
+        initGalleryHome();
+    }
+    
+    function updateGalleryHeader(member) {
+        let collected = 0;
+        member.imgs.forEach(url => { if (collection.includes(url)) collected++; });
+        
+        document.getElementById('g-header-title').innerText = member.name;
+        document.getElementById('g-header-sub').innerText = `${collected} / ${member.imgs.length}`;
+    }
+
+    function renderGalleryGrid(member) {
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = '';
+        
+        member.imgs.forEach(url => {
+            const isUnlocked = collection.includes(url);
+            
+            const item = document.createElement('div');
+            item.className = `g-item ${isUnlocked ? 'unlocked' : 'locked'}`;
+            
+            // Check if just unlocked
+            if (isUnlocked && selectedImg === url && state === 'END') {
+                item.classList.add('just-unlocked');
+            }
+
+            const img = document.createElement('img');
+            img.className = 'g-img';
+            img.loading = "lazy";
+            img.src = url;
+            
+            item.appendChild(img);
+
+            if (!isUnlocked) {
+                const lockOverlay = document.createElement('div');
+                lockOverlay.className = 'g-lock-icon';
+                lockOverlay.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
+                item.appendChild(lockOverlay);
+                
+                // Click event for locked
+                item.onclick = () => showToast();
+            } else {
+                // Click event for unlocked
+                item.onclick = () => openPreview(url);
+                
+                const badge = document.createElement('div');
+                badge.className = 'new-badge';
+                badge.innerText = "NEW";
+                item.appendChild(badge);
+            }
+
+            grid.appendChild(item);
+        });
+    }
+    
+    function showToast() {
+        const toast = document.getElementById('toast');
+        toast.innerText = i18n[currentLang].galleryLocked;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2000);
+    }
+
+    /* --- PREVIEW (LIGHTBOX) FUNCTIONS --- */
+    function openPreview(url) {
+        const modal = document.getElementById('image-preview-modal');
+        const img = document.getElementById('preview-img');
+        img.src = url;
+        modal.classList.add('active');
+    }
+
+    function closePreview() {
+        const modal = document.getElementById('image-preview-modal');
+        modal.classList.remove('active');
+    }
+
+    /* --- USER NAME LOGIC --- */
+    function checkName() {
+        const modal = document.getElementById('name-modal');
+        if (!userName) {
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+        } else {
+            modal.style.display = 'none';
+        }
+    }
+
+    function saveName() {
+        const input = document.getElementById('user-name-input');
+        const val = input.value.trim();
+        if (!val) return;
+        
+        userName = val;
+        localStorage.setItem('cortis_user_name', userName);
+
+        const modal = document.getElementById('name-modal');
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            updateUI(); 
+        }, 300);
+    }
+
+    function resetUserName() {
+        const modal = document.getElementById('name-modal');
+        const input = document.getElementById('user-name-input');
+        
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+            input.value = userName;
+            input.focus();
+        }, 10);
+    }
+
+    /* --- BOOT --- */
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('touchstart', (e) => { if(e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+        let now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) e.preventDefault();
+        lastTouchEnd = now;
+    }, false);
+
+    window.onload = () => {
+        checkName(); 
+        updateUI(); 
+    };
+</script>
+</body>
+</html>
